@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import {
   MicroserviceOptions,
   Transport,
@@ -12,9 +12,17 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   const cfg = app.get(ConfigService);
 
-  // 🔒 exija as envs e evite fallback
   const url = cfg.get<string>('RABBITMQ_URL');
   if (!url) throw new Error('RABBITMQ_URL não definida no .env');
   const queue = cfg.get<string>('RABBITMQ_QUEUE') ?? 'cats_queue';
@@ -22,7 +30,6 @@ async function bootstrap() {
   const maxPrio = Number(cfg.get('RABBITMQ_MAX_PRIORITY') ?? 10);
   const wild = String(cfg.get('RABBITMQ_WILDCARDS') ?? 'true') === 'true';
 
-  // (opcional) log seguro para diagnosticar sem vazar senha
   try {
     const u = new URL(url);
     logger.log(
@@ -51,12 +58,10 @@ async function bootstrap() {
     logger.log(`RMQ Server status: ${s}`),
   );
 
-  // 1) HTTP primeiro
   const port = Number(cfg.get('PORT') ?? 3000);
   await app.listen(port);
   logger.log(`HTTP on http://localhost:${port}`);
 
-  // 2) Microservices depois
   await app.startAllMicroservices();
 }
 void bootstrap();
