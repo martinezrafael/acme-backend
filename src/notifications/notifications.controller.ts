@@ -1,17 +1,26 @@
 import { Controller, Logger } from '@nestjs/common';
 import {
   MessagePattern,
+  EventPattern,
   Payload,
   Ctx,
   RmqContext,
 } from '@nestjs/microservices';
 import { Channel, ConsumeMessage } from 'amqplib';
 import { RABBITMQ_PATTERNS } from '../messaging/rabbitmq.constants';
+import { NotificationsProducer } from './notifications.producer';
+import { StatusService } from './status.service';
 
 @Controller()
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);
 
+  constructor(
+    private readonly producer: NotificationsProducer,
+    private readonly statusService: StatusService,
+  ) {}
+
+  /** RPC de inspeção (client.send) — mantém como estava */
   @MessagePattern(RABBITMQ_PATTERNS.NOTIFICATIONS_INSPECT)
   inspect(@Payload() _data: unknown, @Ctx() context: RmqContext) {
     const pattern = context.getPattern();
@@ -31,7 +40,7 @@ export class NotificationsController {
     }
   }
 
-  // Exemplo com curinga: qualquer routing key que comece com "notifications."
+  /** RPC para "notifications.#" — mantém como estava */
   @MessagePattern(RABBITMQ_PATTERNS.NOTIFICATIONS_ANY)
   handleNotification(
     @Payload() data: { userId?: string; [k: string]: any },
@@ -52,9 +61,82 @@ export class NotificationsController {
 
       channel.ack(msg);
     } catch (error: any) {
-      this.logger.error('Erro ao processar notificação', error || error);
-      // DLQ se configurado
-      channel.nack(msg, false, false);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      this.logger.error('Erro ao processar notificação', error?.stack || error);
+      channel.nack(msg, false, false); // DLQ se configurado
+    }
+  }
+
+  /**
+   * EVENTO publicado com client.emit(...)
+   * Usa o nome da fila do .env (avaliado em tempo de carga do módulo).
+   * Ex.: RABBITMQ_QUEUE=fila.notificacao.entrada.rafael
+   */
+  @EventPattern(process.env.RABBITMQ_QUEUE || 'fila.notificacao.entrada.rafael')
+  async consumirEntrada(
+    @Payload() data: { mensagemId: string; conteudoMensagem: string },
+    @Ctx() context: RmqContext,
+  ) {
+    const channel = context.getChannelRef() as Channel;
+    const msg = context.getMessage() as ConsumeMessage;
+
+    // correlationId para rastreio (messageId tem prioridade)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const corrId =
+      msg.properties.messageId ??
+      (typeof msg.properties.headers?.['x-correlation-id'] === 'string'
+        ? msg.properties.headers['x-correlation-id']
+        : undefined);
+
+    try {
+      this.logger.log(
+        `Entrada recebida: id=${data.mensagemId} key=${msg.fields.routingKey} corrId=${corrId}`,
+      );
+
+      // Simula processamento assíncrono de ~1–2s
+      const delay = 1000 + Math.random() * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      // Sorteio 1..10 — <=2 => falha (20%)
+      const sorteio = 1 + Math.floor(Math.random() * 10);
+      const status =
+        sorteio <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
+
+      // Armazena status em memória
+      this.statusService.setStatus(data.mensagemId, status);
+
+      // Publica status na fila de status
+      await this.producer.publicarStatus({
+        mensagemId: data.mensagemId,
+        status,
+      });
+
+      this.logger.log(
+        `Status publicado: id=${data.mensagemId} status=${status} sorteio=${sorteio} (~${Math.round(
+          delay,
+        )}ms)`,
+      );
+
+      // ACK após publicar status (evita reentrega)
+      channel.ack(msg);
+    } catch (error: any) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      this.logger.error('Erro ao processar entrada', error?.stack || error);
+
+      // Garante registro de falha e tentativa de publicar status
+      const status = 'FALHA_PROCESSAMENTO';
+      this.statusService.setStatus(data.mensagemId, status);
+      try {
+        await this.producer.publicarStatus({
+          mensagemId: data.mensagemId,
+          status,
+        });
+      } catch (pubErr) {
+        this.logger.error('Falha ao publicar status', pubErr);
+      }
+
+      // ACK para não reencadear loop (ajuste para NACK se quiser reprocessar)
+      channel.ack(msg);
     }
   }
 }
