@@ -3,7 +3,7 @@ import { ApiController } from './api.controller';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
-  controllers: [ApiController],
   imports: [NotificationsModule],
+  controllers: [ApiController],
 })
 export class ApiModule {}

@@ -7,13 +7,17 @@ export class ApiController {
   constructor(private readonly producer: NotificationsProducer) {}
 
   @Post('notificar')
-  @HttpCode(HttpStatus.CREATED)
+  @HttpCode(HttpStatus.ACCEPTED) // 202
   async notificar(@Body() dto: NotificarDto) {
-    await this.producer.emitUserCreated({
-      userId: dto.mensagemId,
-      tenantId: 't1',
-      message: dto.conteudoMensagem,
+    await this.producer.publicarEntrada({
+      mensagemId: dto.mensagemId,
+      conteudoMensagem: dto.conteudoMensagem,
     });
-    return { ok: true };
+
+    // Retorna imediatamente (assíncrono), com o id para rastreio
+    return {
+      status: 'accepted',
+      mensagemId: dto.mensagemId,
+    };
   }
 }
