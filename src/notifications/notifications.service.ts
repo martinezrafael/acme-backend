@@ -1,4 +1,3 @@
-// src/notifications/notifications.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -9,7 +8,6 @@ export class NotificationsService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /** Simula 1–2s de processamento */
   async processarEntrada(data: {
     mensagemId: string;
     conteudoMensagem: string;
@@ -18,7 +16,6 @@ export class NotificationsService {
       `Iniciando processamento id=${data.mensagemId} conteudo="${data.conteudoMensagem}"`,
     );
 
-    // atraso aleatório entre 1000 e 2000ms
     const delay = 1000 + Math.random() * 1000;
     await this.sleep(delay);
 

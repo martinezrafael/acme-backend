@@ -20,7 +20,6 @@ export class NotificationsController {
     private readonly statusService: StatusService,
   ) {}
 
-  /** RPC de inspeção (client.send) — mantém como estava */
   @MessagePattern(RABBITMQ_PATTERNS.NOTIFICATIONS_INSPECT)
   inspect(@Payload() _data: unknown, @Ctx() context: RmqContext) {
     const pattern = context.getPattern();
@@ -40,7 +39,6 @@ export class NotificationsController {
     }
   }
 
-  /** RPC para "notifications.#" — mantém como estava */
   @MessagePattern(RABBITMQ_PATTERNS.NOTIFICATIONS_ANY)
   handleNotification(
     @Payload() data: { userId?: string; [k: string]: any },
@@ -67,11 +65,6 @@ export class NotificationsController {
     }
   }
 
-  /**
-   * EVENTO publicado com client.emit(...)
-   * Usa o nome da fila do .env (avaliado em tempo de carga do módulo).
-   * Ex.: RABBITMQ_QUEUE=fila.notificacao.entrada.rafael
-   */
   @EventPattern(process.env.RABBITMQ_QUEUE || 'fila.notificacao.entrada.rafael')
   async consumirEntrada(
     @Payload() data: { mensagemId: string; conteudoMensagem: string },
@@ -80,7 +73,6 @@ export class NotificationsController {
     const channel = context.getChannelRef() as Channel;
     const msg = context.getMessage() as ConsumeMessage;
 
-    // correlationId para rastreio (messageId tem prioridade)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const corrId =
       msg.properties.messageId ??
@@ -93,19 +85,15 @@ export class NotificationsController {
         `Entrada recebida: id=${data.mensagemId} key=${msg.fields.routingKey} corrId=${corrId}`,
       );
 
-      // Simula processamento assíncrono de ~1–2s
       const delay = 1000 + Math.random() * 1000;
       await new Promise((resolve) => setTimeout(resolve, delay));
 
-      // Sorteio 1..10 — <=2 => falha (20%)
       const sorteio = 1 + Math.floor(Math.random() * 10);
       const status =
         sorteio <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
 
-      // Armazena status em memória
       this.statusService.setStatus(data.mensagemId, status);
 
-      // Publica status na fila de status
       await this.producer.publicarStatus({
         mensagemId: data.mensagemId,
         status,
@@ -117,13 +105,11 @@ export class NotificationsController {
         )}ms)`,
       );
 
-      // ACK após publicar status (evita reentrega)
       channel.ack(msg);
     } catch (error: any) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.logger.error('Erro ao processar entrada', error?.stack || error);
 
-      // Garante registro de falha e tentativa de publicar status
       const status = 'FALHA_PROCESSAMENTO';
       this.statusService.setStatus(data.mensagemId, status);
       try {
@@ -135,7 +121,6 @@ export class NotificationsController {
         this.logger.error('Falha ao publicar status', pubErr);
       }
 
-      // ACK para não reencadear loop (ajuste para NACK se quiser reprocessar)
       channel.ack(msg);
     }
   }

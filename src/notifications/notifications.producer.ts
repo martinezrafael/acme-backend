@@ -24,9 +24,8 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
   private statusSub?: Subscription;
 
   private readonly filaEntrada: string;
-  private readonly filaStatus: string; // ← NOVO
+  private readonly filaStatus: string;
 
-  // driver real (amqp-connection-manager)
   private manager?: AmqpConnectionManager;
   private onDriverConnect = () => this.logger.log('RMQ driver: connect');
   private onDriverDisconnect = (params: unknown) =>
@@ -47,7 +46,6 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
     this.filaStatus = status;
   }
 
-  // conecta antes de unwrap()
   async onModuleInit() {
     this.statusSub = this.client.status.subscribe((s: RmqStatus) =>
       this.logger.log(`RMQ Client status: ${s}`),
@@ -62,12 +60,10 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {
     this.statusSub?.unsubscribe();
-    // Remove listeners for cleanup
     this.manager?.removeListener?.('connect', this.onDriverConnect);
     this.manager?.removeListener?.('disconnect', this.onDriverDisconnect);
   }
 
-  /** Publica na fila de ENTRADA (routing key = nome da fila) */
   async publicarEntrada(payload: {
     mensagemId: string;
     conteudoMensagem: string;
@@ -86,7 +82,6 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
     await lastValueFrom(this.client.emit(this.filaEntrada, record));
   }
 
-  /** NOVO: publica status em fila.notificacao.status.[SEU-NOME] */
   async publicarStatus(payload: { mensagemId: string; status: string }) {
     const record = new RmqRecordBuilder(payload)
       .setOptions({
@@ -102,7 +97,6 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
     await lastValueFrom(this.client.emit(this.filaStatus, record));
   }
 
-  /** Exemplo: evento topic (fire-and-forget) */
   async emitUserCreated(payload: {
     userId: string;
     message: string;
@@ -118,7 +112,6 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
     await lastValueFrom(this.client.emit('notifications.user.created', record));
   }
 
-  /** Exemplo: RPC (request/response) */
   async sendReplaceEmoji(message: string): Promise<string> {
     const record = new RmqRecordBuilder(message)
       .setOptions({
