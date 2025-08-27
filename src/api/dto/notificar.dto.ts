@@ -8,6 +8,6 @@ export class NotificarDto {
   @IsString()
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @MinLength(1, { message: 'conteudoMensagem não pode ser vazio' })
+  @MinLength(1, { message: 'conteudo Mensagem não pode ser vazio' })
   conteudoMensagem!: string;
 }

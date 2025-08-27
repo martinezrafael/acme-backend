@@ -7,17 +7,20 @@ export class ApiController {
   constructor(private readonly producer: NotificationsProducer) {}
 
   @Post('notificar')
-  @HttpCode(HttpStatus.ACCEPTED) // 202
+  @HttpCode(HttpStatus.ACCEPTED)
   async notificar(@Body() dto: NotificarDto) {
-    await this.producer.publicarEntrada({
-      mensagemId: dto.mensagemId,
-      conteudoMensagem: dto.conteudoMensagem,
-    });
-
-    // Retorna imediatamente (assíncrono), com o id para rastreio
-    return {
-      status: 'accepted',
-      mensagemId: dto.mensagemId,
-    };
+    try {
+      await this.producer.publicarEntrada({
+        mensagemId: dto.mensagemId,
+        conteudoMensagem: dto.conteudoMensagem,
+      });
+      return { status: 'accepted', mensagemId: dto.mensagemId };
+    } catch {
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        status: 'failed_to_enqueue',
+        mensagemId: dto.mensagemId,
+      };
+    }
   }
 }

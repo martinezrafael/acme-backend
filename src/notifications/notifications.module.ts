@@ -10,6 +10,7 @@ import { StatusService } from './status.service';
   imports: [RabbitmqClientModule],
   controllers: [NotificationsController, NotificationsHttpController],
   providers: [NotificationsService, NotificationsProducer, StatusService],
-  exports: [NotificationsProducer],
+
+  exports: [NotificationsProducer, StatusService],
 })
 export class NotificationsModule {}

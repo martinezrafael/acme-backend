@@ -12,7 +12,6 @@ import { RABBITMQ_CLIENTS } from './rabbitmq.constants';
         imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: (cfg: ConfigService) => {
-          // Pegue e valide as variáveis
           const url = cfg.get<string>('RABBITMQ_URL');
           if (!url) {
             throw new Error('RABBITMQ_URL não definida no .env');
