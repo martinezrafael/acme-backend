@@ -2,12 +2,6 @@
 
 Backend NestJS para orquestração de notificações via RabbitMQ (CloudAMQP).
 
-## Comece aqui
-
-1. Configure o `.env` (AMQPS).
-2. `npm ci`
-3. `npm run start:dev`
-
 ## Documentação
 
 - [Visão](./docs/vision.md)
