@@ -39,6 +39,20 @@ O microserviço RMQ também conecta automaticamente e começa a consumir filas.
 
 ## 5. Testes rápidos com `curl`
 
+## 6. Testes automatizados
+
+Para rodar todos os testes unitários:
+
+```bash
+npm test
+```
+
+Os testes de publicação no RabbitMQ usam mock do ClientProxy, sem necessidade de conexão real.
+
+## 7. Contribuição
+
+Ao abrir um Pull Request, mantenha código e documentação sincronizados. Atualize arquivos em `docs/` sempre que alterar endpoints, fluxo ou requisitos.
+
 **Enfileirar mensagem**
 
 ```bash

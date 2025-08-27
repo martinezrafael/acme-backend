@@ -111,6 +111,7 @@ export class NotificationsController {
 
       channel.ack(msg);
     } catch (error: any) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.logger.error('Erro ao processar entrada', error?.stack || error);
 
       const status = 'FALHA_PROCESSAMENTO';

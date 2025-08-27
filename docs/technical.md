@@ -42,6 +42,18 @@
 - Microservice RMQ (`Transport.RMQ`) com `prefetchCount`, `wildcards`, `x-max-priority`, `noAck=false`.
 - Logs: status de servidor/cliente RMQ e parse da `RABBITMQ_URL`.
 
+## Testes
+
+- Os testes unitários utilizam Jest.
+- Para funções que publicam no RabbitMQ, o mock do ClientProxy retorna um Observable (`of('ok')` do RxJS), garantindo que o teste seja unitário e não dependa de conexão real.
+- Exemplo de execução:
+
+```bash
+npm test
+```
+
+Todos os testes devem passar, incluindo o teste de publicação na fila.
+
 ## Variáveis de Ambiente (.env)
 
 ```ini
