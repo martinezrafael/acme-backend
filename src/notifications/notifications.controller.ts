@@ -82,7 +82,6 @@ export class NotificationsController {
         ? msg.properties.headers['x-correlation-id']
         : undefined);
 
-    const statusCode = this.config.get<number>('STATUS_CODE') ?? 200;
     try {
       this.logger.log(
         `Entrada recebida: id=${data.mensagemId} key=${msg.fields.routingKey} corrId=${corrId}`,
@@ -94,6 +93,7 @@ export class NotificationsController {
       const sorteio = 1 + Math.floor(Math.random() * 10);
       const status =
         sorteio <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
+      const statusCode = status === 'PROCESSADO_SUCESSO' ? 200 : 500;
 
       this.statusService.setStatus(data.mensagemId, status, statusCode);
 
@@ -111,10 +111,10 @@ export class NotificationsController {
 
       channel.ack(msg);
     } catch (error: any) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.logger.error('Erro ao processar entrada', error?.stack || error);
 
       const status = 'FALHA_PROCESSAMENTO';
+      const statusCode = 500;
       this.statusService.setStatus(data.mensagemId, status, statusCode);
       try {
         await this.producer.publicarStatus({
