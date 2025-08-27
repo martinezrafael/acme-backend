@@ -82,7 +82,11 @@ export class NotificationsProducer implements OnModuleInit, OnModuleDestroy {
     await lastValueFrom(this.client.emit(this.filaEntrada, record));
   }
 
-  async publicarStatus(payload: { mensagemId: string; status: string }) {
+  async publicarStatus(payload: {
+    mensagemId: string;
+    status: string;
+    statusCode?: number;
+  }) {
     const record = new RmqRecordBuilder(payload)
       .setOptions({
         headers: {

@@ -5,11 +5,17 @@ import { NotificationsProducer } from './notifications.producer';
 import { RabbitmqClientModule } from '../messaging/rabbitmq-client.module';
 import { NotificationsHttpController } from './notifications.http.controller';
 import { StatusService } from './status.service';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Module({
   imports: [RabbitmqClientModule],
   controllers: [NotificationsController, NotificationsHttpController],
-  providers: [NotificationsService, NotificationsProducer, StatusService],
+  providers: [
+    NotificationsService,
+    NotificationsProducer,
+    StatusService,
+    NotificationsGateway,
+  ],
 
   exports: [NotificationsProducer, StatusService],
 })

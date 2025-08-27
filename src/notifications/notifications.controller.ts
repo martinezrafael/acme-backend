@@ -10,6 +10,7 @@ import { Channel, ConsumeMessage } from 'amqplib';
 import { RABBITMQ_PATTERNS } from '../messaging/rabbitmq.constants';
 import { NotificationsProducer } from './notifications.producer';
 import { StatusService } from './status.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller()
 export class NotificationsController {
@@ -18,6 +19,7 @@ export class NotificationsController {
   constructor(
     private readonly producer: NotificationsProducer,
     private readonly statusService: StatusService,
+    private readonly config: ConfigService,
   ) {}
 
   @MessagePattern(RABBITMQ_PATTERNS.NOTIFICATIONS_INSPECT)
@@ -80,6 +82,7 @@ export class NotificationsController {
         ? msg.properties.headers['x-correlation-id']
         : undefined);
 
+    const statusCode = this.config.get<number>('STATUS_CODE') ?? 200;
     try {
       this.logger.log(
         `Entrada recebida: id=${data.mensagemId} key=${msg.fields.routingKey} corrId=${corrId}`,
@@ -92,11 +95,12 @@ export class NotificationsController {
       const status =
         sorteio <= 2 ? 'FALHA_PROCESSAMENTO' : 'PROCESSADO_SUCESSO';
 
-      this.statusService.setStatus(data.mensagemId, status);
+      this.statusService.setStatus(data.mensagemId, status, statusCode);
 
       await this.producer.publicarStatus({
         mensagemId: data.mensagemId,
         status,
+        statusCode,
       });
 
       this.logger.log(
@@ -111,11 +115,12 @@ export class NotificationsController {
       this.logger.error('Erro ao processar entrada', error?.stack || error);
 
       const status = 'FALHA_PROCESSAMENTO';
-      this.statusService.setStatus(data.mensagemId, status);
+      this.statusService.setStatus(data.mensagemId, status, statusCode);
       try {
         await this.producer.publicarStatus({
           mensagemId: data.mensagemId,
           status,
+          statusCode,
         });
       } catch (pubErr) {
         this.logger.error('Falha ao publicar status', pubErr);
